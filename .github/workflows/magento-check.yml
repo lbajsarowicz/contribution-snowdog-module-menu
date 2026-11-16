@@ -1,0 +1,66 @@
+name: Magento Check
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: magento-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Static checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: lbajsarowicz/github-action-magento-extension@9786e3fa74578765b93d9ba612ba841d90957df0 # v0.1.0-rc.3
+        with:
+          php-version: '8.3'
+
+  matrix:
+    name: Version matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - id: matrix
+        uses: lbajsarowicz/github-action-magento-matrix@36565d3798c5d7306316e83b030550e78d28ed1e # v0.1.0-rc.2
+
+  magento:
+    name: Magento ${{ matrix.magento }} / PHP ${{ matrix.php }}
+    needs: matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - id: check
+        uses: lbajsarowicz/github-action-magento-extension@9786e3fa74578765b93d9ba612ba841d90957df0 # v0.1.0-rc.3
+        with:
+          magento-version: ${{ matrix.magento }}
+          php-version: ${{ matrix.php }}
+          checks: install,compile,unit,phpstan
+          annotations: ${{ strategy.job-index == 0 }}
+      - name: Upload results
+        if: ${{ always() && steps.check.outputs.result-path != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: magento-check-${{ matrix.magento }}-php${{ matrix.php }}
+          path: ${{ steps.check.outputs.result-path }}
+          retention-days: 7
