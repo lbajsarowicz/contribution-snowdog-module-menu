@@ -11,20 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  static:
-    name: Static checks
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: lbajsarowicz/github-action-magento-extension@cf4626cdcfbca2c12f207b8b57b583f3af704426 # v0.1.0-rc.4
-        with:
-          php-version: '8.3'
-
   matrix:
     name: Version matrix
     runs-on: ubuntu-24.04
@@ -32,9 +18,30 @@ jobs:
     permissions: {}
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
+      php: ${{ steps.matrix.outputs.php }}
     steps:
       - id: matrix
-        uses: lbajsarowicz/github-action-magento-matrix@36565d3798c5d7306316e83b030550e78d28ed1e # v0.1.0-rc.2
+        uses: lbajsarowicz/github-action-magento-matrix@8127c452119ddebdb9bcf5c9002806cdbce73996 # v0.1.0-rc.3
+
+  static:
+    name: Static checks / PHP ${{ matrix.php }}
+    needs: matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ${{ fromJSON(needs.matrix.outputs.php) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: lbajsarowicz/github-action-magento-extension/static@5e8feceece80ca96a796a6b421a9bbd925250a79 # v0.1.0-rc.5
+        with:
+          php-version: ${{ matrix.php }}
+          annotations: ${{ strategy.job-index == 0 }}
 
   magento:
     name: Magento ${{ matrix.magento }} / PHP ${{ matrix.php }}
@@ -51,7 +58,7 @@ jobs:
         with:
           persist-credentials: false
       - id: check
-        uses: lbajsarowicz/github-action-magento-extension@cf4626cdcfbca2c12f207b8b57b583f3af704426 # v0.1.0-rc.4
+        uses: lbajsarowicz/github-action-magento-extension@5e8feceece80ca96a796a6b421a9bbd925250a79 # v0.1.0-rc.5
         with:
           magento-version: ${{ matrix.magento }}
           php-version: ${{ matrix.php }}
