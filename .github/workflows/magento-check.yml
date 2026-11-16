@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: lbajsarowicz/github-action-magento-extension@9786e3fa74578765b93d9ba612ba841d90957df0 # v0.1.0-rc.3
+      - uses: lbajsarowicz/github-action-magento-extension@cf4626cdcfbca2c12f207b8b57b583f3af704426 # v0.1.0-rc.4
         with:
           php-version: '8.3'
 
@@ -51,7 +51,7 @@ jobs:
         with:
           persist-credentials: false
       - id: check
-        uses: lbajsarowicz/github-action-magento-extension@9786e3fa74578765b93d9ba612ba841d90957df0 # v0.1.0-rc.3
+        uses: lbajsarowicz/github-action-magento-extension@cf4626cdcfbca2c12f207b8b57b583f3af704426 # v0.1.0-rc.4
         with:
           magento-version: ${{ matrix.magento }}
           php-version: ${{ matrix.php }}
