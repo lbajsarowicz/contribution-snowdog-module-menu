@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: lbajsarowicz/github-action-magento-extension/static@107204fdf19802db4d52b62a0c0dd3abcee71472 # v0.1.0-rc.9
+      - uses: lbajsarowicz/github-action-magento-extension/static@982ffdc3ecd94dd52f8999c0bd42c518f436836b # v0.1.0-rc.10
         with:
           php-version: ${{ matrix.php }}
           checks: validate,lint
@@ -58,7 +58,7 @@ jobs:
         with:
           persist-credentials: false
       - id: check
-        uses: lbajsarowicz/github-action-magento-extension/phpcs@107204fdf19802db4d52b62a0c0dd3abcee71472 # v0.1.0-rc.9
+        uses: lbajsarowicz/github-action-magento-extension/phpcs@982ffdc3ecd94dd52f8999c0bd42c518f436836b # v0.1.0-rc.10
         with:
           magento-version: ${{ matrix.magento }}
           php-version: ${{ matrix.php }}
@@ -79,7 +79,7 @@ jobs:
         with:
           persist-credentials: false
       - id: check
-        uses: lbajsarowicz/github-action-magento-extension/phpstan@107204fdf19802db4d52b62a0c0dd3abcee71472 # v0.1.0-rc.9
+        uses: lbajsarowicz/github-action-magento-extension/phpstan@982ffdc3ecd94dd52f8999c0bd42c518f436836b # v0.1.0-rc.10
         with:
           magento-version: ${{ matrix.magento }}
           php-version: ${{ matrix.php }}
@@ -107,7 +107,7 @@ jobs:
         with:
           persist-credentials: false
       - id: check
-        uses: lbajsarowicz/github-action-magento-extension/compile@107204fdf19802db4d52b62a0c0dd3abcee71472 # v0.1.0-rc.9
+        uses: lbajsarowicz/github-action-magento-extension/compile@982ffdc3ecd94dd52f8999c0bd42c518f436836b # v0.1.0-rc.10
         with:
           magento-version: ${{ matrix.magento }}
           php-version: ${{ matrix.php }}
@@ -134,7 +134,7 @@ jobs:
         with:
           persist-credentials: false
       - id: check
-        uses: lbajsarowicz/github-action-magento-extension/phpunit@107204fdf19802db4d52b62a0c0dd3abcee71472 # v0.1.0-rc.9
+        uses: lbajsarowicz/github-action-magento-extension/phpunit@982ffdc3ecd94dd52f8999c0bd42c518f436836b # v0.1.0-rc.10
         with:
           magento-version: ${{ matrix.magento }}
           php-version: ${{ matrix.php }}
