@@ -1,0 +1,132 @@
+name: Magento Check
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: magento-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  matrix:
+    name: Version matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - id: matrix
+        uses: lbajsarowicz/github-action-magento-matrix@d5dc67ff01e74abf6588c8f8f265580d6b601eef # v0.1.0-rc.4
+
+  check:
+    name: "Magento ${{ matrix.magento }} @ PHP ${{ matrix.php }}"
+    needs: matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pull-requests: read # list the files changed by the pull request
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+    env:
+      # The Result job shows one table for the whole run instead of one per step.
+      MAGENTO_EXTENSION_CHECK_SUMMARY: 'false'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: bcmath, ctype, curl, dom, ftp, gd, hash, iconv, intl, mbstring, openssl, pdo_mysql, simplexml, soap, sockets, sodium, xsl, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Composer and syntax
+        id: static
+        uses: lbajsarowicz/github-action-magento-extension/static@b4fbeaef89f3e563860162a79ea498ddb06ad3b3 # v0.1.0-rc.20
+        with:
+          magento-version: ${{ matrix.magento }}
+          php-version: ${{ matrix.php }}
+          checks: validate,lint
+
+      - name: Install Magento ${{ matrix.magento }}
+        id: install
+        uses: lbajsarowicz/github-action-magento-extension/install@b4fbeaef89f3e563860162a79ea498ddb06ad3b3 # v0.1.0-rc.20
+        with:
+          magento-version: ${{ matrix.magento }}
+          php-version: ${{ matrix.php }}
+
+      - name: PHPCS
+        id: phpcs
+        uses: lbajsarowicz/github-action-magento-extension/phpcs@b4fbeaef89f3e563860162a79ea498ddb06ad3b3 # v0.1.0-rc.20
+        with:
+          magento-version: ${{ matrix.magento }}
+          php-version: ${{ matrix.php }}
+          annotations: ${{ strategy.job-index == 0 }}
+
+      - name: Compile and static content
+        id: compile
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        uses: lbajsarowicz/github-action-magento-extension/compile@b4fbeaef89f3e563860162a79ea498ddb06ad3b3 # v0.1.0-rc.20
+        with:
+          magento-version: ${{ matrix.magento }}
+          php-version: ${{ matrix.php }}
+
+      - name: Unit tests
+        id: unit
+        if: ${{ !cancelled() && steps.compile.outcome == 'success' }}
+        uses: lbajsarowicz/github-action-magento-extension/phpunit@b4fbeaef89f3e563860162a79ea498ddb06ad3b3 # v0.1.0-rc.20
+        with:
+          magento-version: ${{ matrix.magento }}
+          php-version: ${{ matrix.php }}
+          suite: unit
+          testdox: true
+
+      - name: PHPStan
+        id: phpstan
+        if: ${{ !cancelled() && steps.compile.outcome == 'success' }}
+        uses: lbajsarowicz/github-action-magento-extension/phpstan@b4fbeaef89f3e563860162a79ea498ddb06ad3b3 # v0.1.0-rc.20
+        with:
+          magento-version: ${{ matrix.magento }}
+          php-version: ${{ matrix.php }}
+          annotations: ${{ strategy.job-index == 0 }}
+
+      - name: Upload results
+        if: ${{ always() && steps.static.outputs.result-path != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: magento-check-${{ matrix.magento }}-php${{ matrix.php }}
+          path: ${{ steps.static.outputs.result-path }}
+          retention-days: 7
+
+  result:
+    name: Result
+    if: ${{ always() }}
+    needs: [matrix, check]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: magento-check-*
+          path: magento-check-results
+      - uses: lbajsarowicz/github-action-magento-extension/report@b4fbeaef89f3e563860162a79ea498ddb06ad3b3 # v0.1.0-rc.20
+        with:
+          matrix: ${{ needs.matrix.outputs.matrix }}
+          checks: validate,lint,install,phpcs,compile,static-content,unit,phpstan
+      - name: Fail unless every job succeeded
+        if: ${{ always() }}
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Jobs: $RESULTS"
+          [[ ! "$RESULTS" =~ (failure|cancelled|skipped) ]]
